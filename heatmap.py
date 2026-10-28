@@ -507,7 +507,9 @@ def tape_lines(draw, freqs, interval, y1, y2, used=set()):
         used.add(i)
     return hits
 
-def tape_text(img, freqs, interval, y, used=set()):
+def tape_text(img, freqs, interval, y, used=set(), occupied=None):
+    if occupied is None:
+        occupied = []
     min_f = min(freqs)
     max_f = max(freqs)
     low_f = (min_f // interval) * interval
@@ -532,7 +534,12 @@ def tape_text(img, freqs, interval, y, used=set()):
             if s.startswith('0'):
                 s = '%iM' % (i/1e6)
         w = word_aa(s, tape_pt, 'black', 'yellow')
-        img.paste(w, (x - w.size[0]//2, y))
+        x0 = x - w.size[0]//2
+        x1 = x0 + w.size[0]
+        if any(x0 < b and a < x1 for a, b in occupied):
+            continue
+        img.paste(w, (x0, y))
+        occupied.append((x0, x1))
         used.add(i)
 
 def shadow_text(draw, x, y, s, font, fg_color='white', bg_color='black'):
@@ -562,11 +569,12 @@ def create_labels(args, img):
             break
     label_base = 10**label_base
 
+    occupied = []
     for scale,y in [(1,10), (5,15), (10,19), (50,22), (100,24), (500, 25)]:
         hits = tape_lines(draw, args.freqs, label_base/scale, y, tape_height)
         pixels_per_hit = width / hits
         if pixels_per_hit > 50:
-            tape_text(img, args.freqs, label_base/scale, y-tape_pt)
+            tape_text(img, args.freqs, label_base/scale, 0, occupied=occupied)
         if pixels_per_hit < 10:
             break
 
